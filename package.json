@@ -1,0 +1,8 @@
+{
+	"name": "tf-idf-js",
+	"version": "1.0.0",
+	"keywords": [],
+	"author": "",
+	"license": "MIT",
+	"packageManager": "pnpm@10.10.0"
+}
