@@ -1,6 +1,5 @@
+import { STOP_WORDS } from './stop-words'
 import { TfIdfCalculator } from './tf-idf'
-
-// Sample long articles on different topics
 
 const doc1 = `
 人工智能（AI）是计算机科学的一个重要分支，
@@ -56,6 +55,7 @@ const preprocess = (text: string): string[] => {
 	return Array.from(segments)
 		.filter((segment) => segment.isWordLike)
 		.map((segment) => segment.segment)
+		.filter((word) => !STOP_WORDS.has(word))
 }
 
 const documents = [preprocess(doc1), preprocess(doc2), preprocess(doc3)]
