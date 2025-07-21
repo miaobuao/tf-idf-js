@@ -1,4 +1,5 @@
-import { STOP_WORDS } from './stop-words'
+import { eng, removeStopwords, zho } from 'stopword'
+import { TextRank } from './text-rank'
 import { TfIdfCalculator } from './tf-idf'
 
 const doc1 = `
@@ -49,24 +50,49 @@ const doc3 = `
 未来，数字经济无疑将继续作为全球变革的主要驱动力，为社会创造前所未有的价值。
 `
 
-const preprocess = (text: string): string[] => {
+const preprocess = (
+	text: string,
+	filterStopWords: boolean = true,
+): string[] => {
 	const segmenter = new Intl.Segmenter('zh-CN', { granularity: 'word' })
 	const segments = segmenter.segment(text)
-	return Array.from(segments)
+	let words = Array.from(segments)
 		.filter((segment) => segment.isWordLike)
-		.map((segment) => segment.segment)
-		.filter((word) => !STOP_WORDS.has(word))
+		.map((segment) => segment.segment.toLowerCase())
+
+	if (filterStopWords) {
+		words = removeStopwords(words, [...zho, ...eng])
+	}
+	return words
 }
 
-const documents = [preprocess(doc1), preprocess(doc2), preprocess(doc3)]
+// --- Document Processing ---
+const docsContent = [doc1, doc2, doc3]
+const processedDocs = docsContent.map((doc) => preprocess(doc))
 
-const tfidf = new TfIdfCalculator(documents)
+// --- TF-IDF Calculation ---
+const tfidfCalculator = new TfIdfCalculator(processedDocs)
+console.log('## TF-IDF Results')
+processedDocs.forEach((_, i) => {
+	console.log(`[${i + 1}]: ` + tfidfCalculator.getTopTerms(i, 5))
+})
 
-console.log('Top 5 keywords for Document 1 (AI):')
-console.log(tfidf.getTopTerms(0, 5))
+// --- TextRank Calculation ---
+console.log('## TextRank Results')
+processedDocs.forEach((docWords, i) => {
+	// 1. Standard TextRank
+	const textRank = new TextRank()
+	textRank.run(docWords)
+	console.log(`[${i + 1}]: TextRank: ` + textRank.getTopKeywords(5))
 
-console.log('\\nTop 5 keywords for Document 2 (Climate Change):')
-console.log(tfidf.getTopTerms(1, 5))
+	// 2. TextRank with TF-IDF initial weights
+	const tfidfScores = tfidfCalculator.getDocumentScores(i)
+	const initialWeights = new Map(Object.entries(tfidfScores))
 
-console.log('\\nTop 5 keywords for Document 3 (Digital Economy):')
-console.log(tfidf.getTopTerms(2, 5))
+	const weightedTextRank = new TextRank()
+	weightedTextRank.run(docWords, initialWeights)
+
+	console.log(
+		`[${i + 1}]: TextRank + TF-IDF: ` + weightedTextRank.getTopKeywords(5),
+	)
+})
