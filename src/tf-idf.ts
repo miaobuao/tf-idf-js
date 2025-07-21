@@ -1,7 +1,7 @@
 /**
  * A class for calculating TF-IDF (Term Frequency-Inverse Document Frequency).
  */
-export class TfIdfCalculator {
+export class TfIdf {
 	/**
 	 * Stores all documents, e.g., [['term1', 'term2'], ['term3']]
 	 */
