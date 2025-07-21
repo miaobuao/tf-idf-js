@@ -1,6 +1,4 @@
-import { eng, removeStopwords, zho } from 'stopword'
-import { TextRank } from './text-rank'
-import { TfIdfCalculator } from './tf-idf'
+import { getKeywords, KeywordExtractor } from '../src/index'
 
 const doc1 = `
 人工智能（AI）是计算机科学的一个重要分支，
@@ -50,49 +48,46 @@ const doc3 = `
 未来，数字经济无疑将继续作为全球变革的主要驱动力，为社会创造前所未有的价值。
 `
 
-const preprocess = (
-	text: string,
-	filterStopWords: boolean = true,
-): string[] => {
-	const segmenter = new Intl.Segmenter('zh-CN', { granularity: 'word' })
-	const segments = segmenter.segment(text)
-	let words = Array.from(segments)
-		.filter((segment) => segment.isWordLike)
-		.map((segment) => segment.segment.toLowerCase())
-
-	if (filterStopWords) {
-		words = removeStopwords(words, [...zho, ...eng])
-	}
-	return words
-}
-
-// --- Document Processing ---
 const docsContent = [doc1, doc2, doc3]
-const processedDocs = docsContent.map((doc) => preprocess(doc))
 
-// --- TF-IDF Calculation ---
-const tfidfCalculator = new TfIdfCalculator(processedDocs)
-console.log('## TF-IDF Results')
-processedDocs.forEach((_, i) => {
-	console.log(`[${i + 1}]: ` + tfidfCalculator.getTopTerms(i, 5))
-})
-
-// --- TextRank Calculation ---
-console.log('## TextRank Results')
-processedDocs.forEach((docWords, i) => {
-	// 1. Standard TextRank
-	const textRank = new TextRank()
-	textRank.run(docWords)
-	console.log(`[${i + 1}]: TextRank: ` + textRank.getTopKeywords(5))
-
-	// 2. TextRank with TF-IDF initial weights
-	const tfidfScores = tfidfCalculator.getDocumentScores(i)
-	const initialWeights = new Map(Object.entries(tfidfScores))
-
-	const weightedTextRank = new TextRank()
-	weightedTextRank.run(docWords, initialWeights)
-
+console.log('--- Testing getKeywords (convenience function) ---')
+const keywords = getKeywords(docsContent, { topN: 5 })
+keywords.forEach((result, i) => {
 	console.log(
-		`[${i + 1}]: TextRank + TF-IDF: ` + weightedTextRank.getTopKeywords(5),
+		`Keywords for doc ${i + 1}:`,
+		result.map((kw) => `${kw.word}(${kw.score.toFixed(4)})`).join(', '),
 	)
 })
+
+console.log('\n--- Testing KeywordExtractor (class) ---')
+const extractor = new KeywordExtractor(docsContent)
+
+console.log('Getting top 3 keywords...')
+const top3 = extractor.getKeywords({ topN: 3 })
+top3.forEach((result, i) => {
+	console.log(
+		`Keywords for doc ${i + 1}:`,
+		result.map((kw) => `${kw.word}(${kw.score.toFixed(4)})`).join(', '),
+	)
+})
+
+console.log('\nGetting top 7 keywords with different TextRank options...')
+const top7 = extractor.getKeywords({
+	topN: 7,
+	textRankOptions: { damping: 0.9, windowSize: 3 },
+})
+top7.forEach((result, i) => {
+	console.log(
+		`Keywords for doc ${i + 1}:`,
+		result.map((kw) => `${kw.word}(${kw.score.toFixed(4)})`).join(', '),
+	)
+})
+
+console.log('\n--- Testing single document extraction ---')
+const singleDocKeywords = getKeywords(doc1, { topN: 5 })
+console.log(
+	'Keywords for single doc:',
+	singleDocKeywords[0]
+		.map((kw) => `${kw.word}(${kw.score.toFixed(4)})`)
+		.join(', '),
+)
